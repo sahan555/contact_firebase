@@ -2,41 +2,49 @@ import { useEffect, useState } from "react";
 import Navbar from "./componenets/Navbar";
 import { IoMdAddCircle, IoMdSearch } from "react-icons/io";
 
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, onSnapshot } from "firebase/firestore";
 import { db } from "./config/firebase";
 import ContactCard from "./componenets/ContactCard";
-import Model from "./componenets/Model";
-
+import AddAndUpdateContact from "./componenets/AddAndUpdateContact";
+import useDisclouse from "./hooks/useDisclouse";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import NotFoundContact from "./componenets/NotFoundContact";
 export default function App() {
   const [contacts, setContacts] = useState([]);
-  const [isOpen, setOpen] = useState(false);
-  // const [close, setClose] = useState([]);
-
-  const onOpen = () => {
-    setOpen(true);
-  };
-  const onClose = () => {
-    setOpen(false);
-  };
-
+  const { isOpen, onClose, onOpen } = useDisclouse();
+  const [filter,setFilter] = useState(null);
   useEffect(() => {
     const getContacts = async () => {
       try {
         const contactsRef = collection(db, "contacts");
-        const contactsSnapshot = await getDocs(contactsRef);
-        const contactsList = contactsSnapshot.docs.map((doc) => {
-          return {
-            id: doc.id,
-            ...doc.data(),
-          };
+        onSnapshot(contactsRef, (snapsnot) => {
+          const contactsList = snapsnot.docs.map((doc) => {
+            return {
+              id: doc.id,
+              ...doc.data(),
+            };
+          });
+          setContacts(contactsList);
+          setFilter(contactsList);
+          return contactsList;
         });
-        setContacts(contactsList);
       } catch (error) {
         console.log(error);
       }
     };
     getContacts();
   }, []);
+
+const searchContact = (e) => {
+  const searchValue = e.target.value;
+  console.log(searchValue);
+   if(searchValue === ""){
+    setFilter(null);
+   }
+   const contactfilter = contacts?.filter((contact)=>contact.name.toLowerCase().includes(searchValue.toLowerCase()));
+   setFilter(contactfilter);
+}
 
   return (
     <>
@@ -45,23 +53,22 @@ export default function App() {
         <div className="search flex mt-3 relative">
           <IoMdSearch className="absolute mt-1 ml-1 text-3xl text-white pointer-events-none" />
           <input
-            type="text"
+            type="text" onChange={searchContact}
             className="border bg-transparent border-white p-4 pl-10 h-10 text-white rounded-lg flex-grow outline-none"
           />
           <IoMdAddCircle
-            onClick={onOpen}
+            onClick={onOpen} 
             className="text-white text-4xl ml-2 cursor-pointer"
           />
         </div>
         <div className="contact-list pt-3 flex flex-col gap-3">
-          {contacts.map((contact) => (
+          {contacts.length <= 0 ? <NotFoundContact/> :filter.map((contact) => (
             <ContactCard key={contact.id} contact={contact} />
           ))}
         </div>
-        <Model isOpen={isOpen} onClose={onClose}>
-          HI asdas
-        </Model>
+        <AddAndUpdateContact isOpen={isOpen} onClose={onClose} />
       </div>
+      <ToastContainer position="bottom-center" />
     </>
   );
 }
